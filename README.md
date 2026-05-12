@@ -31,6 +31,7 @@
   <a href="#screenshots">Screenshots</a> ·
   <a href="#what-it-does">What It Does</a> ·
   <a href="#features">Features</a> ·
+  <a href="#links">Links</a> ·
   <a href="#build">Build</a> ·
   <a href="#security-model">Security</a>
 </p>
@@ -64,6 +65,13 @@ It supports two operating modes:
 - Fixed-size frameless Windows UI with tray controls.
 - External community/support links opened through the system browser.
 - Local Zector font bundle; no web font linking.
+
+## Links
+
+- Telegram: https://t.me/svllvsxprod
+- Community: https://t.me/openlibrecommunity
+- Tribute: https://t.me/tribute/app?startapp=dK9j
+- Donate: https://nowpayments.io/donation/svllvsx
 
 ## Architecture
 
