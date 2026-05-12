@@ -13,9 +13,29 @@
     <td align="center" width="760">
       <h3>Keep LibreRTC independent</h3>
       <p>If this project helps you, support further development, testing, and network tooling.</p>
+      <a href="https://t.me/tribute/app?startapp=dK9j">
+        <img alt="Support LibreRTC via Tribute" src="https://img.shields.io/badge/Support%20LibreRTC-Tribute-0EA5E9?style=for-the-badge&logo=telegram&logoColor=white&labelColor=111827">
+      </a>
       <a href="https://nowpayments.io/donation/svllvsx">
         <img alt="Support with crypto via NOWPayments" src="https://img.shields.io/badge/Support%20LibreRTC-NOWPayments-22C55E?style=for-the-badge&logo=bitcoin&logoColor=white&labelColor=111827">
       </a>
+    </td>
+  </tr>
+</table>
+
+<table align="center">
+  <tr>
+    <td align="center" width="370">
+      <a href="https://t.me/svllvsxprod">
+        <img alt="svllvsxprod Telegram" src="https://img.shields.io/badge/Telegram-svllvsxprod-26A5E4?style=for-the-badge&logo=telegram&logoColor=white&labelColor=111827">
+      </a>
+      <p>Project updates, builds, and release notes.</p>
+    </td>
+    <td align="center" width="370">
+      <a href="https://t.me/openlibrecommunity">
+        <img alt="Open Libre Community Telegram" src="https://img.shields.io/badge/Telegram-Open%20Libre%20Community-26A5E4?style=for-the-badge&logo=telegram&logoColor=white&labelColor=111827">
+      </a>
+      <p>Community chat, feedback, and testing.</p>
     </td>
   </tr>
 </table>
@@ -31,7 +51,6 @@
   <a href="#screenshots">Screenshots</a> ·
   <a href="#what-it-does">What It Does</a> ·
   <a href="#features">Features</a> ·
-  <a href="#links">Links</a> ·
   <a href="#build">Build</a> ·
   <a href="#security-model">Security</a>
 </p>
@@ -65,13 +84,6 @@ It supports two operating modes:
 - Fixed-size frameless Windows UI with tray controls.
 - External community/support links opened through the system browser.
 - Local Zector font bundle; no web font linking.
-
-## Links
-
-- Telegram: https://t.me/svllvsxprod
-- Community: https://t.me/openlibrecommunity
-- Tribute: https://t.me/tribute/app?startapp=dK9j
-- Donate: https://nowpayments.io/donation/svllvsx
 
 ## Architecture
 
