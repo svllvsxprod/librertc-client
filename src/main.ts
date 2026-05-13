@@ -449,6 +449,7 @@ const welcomeContinue = element<HTMLButtonElement>('welcomeContinue');
 let currentProfile: ClientProfile | null = null;
 let currentServers: ServerProfile[] = [];
 let currentStatus: ClientStatus | null = null;
+let welcomeCheckInFlight = false;
 
 windowTitlebar.addEventListener('pointerdown', async (event) => {
   if (event.button !== 0) return;
@@ -588,7 +589,7 @@ async function boot() {
     renderServers();
     renderProfile(currentProfile);
     renderStatus(await invoke<ClientStatus>('get_status'));
-    welcomeOverlay.hidden = currentProfile.welcome_dismissed;
+    welcomeOverlay.hidden = true;
   } catch (error) {
     renderNotice(String(error));
   }
@@ -741,6 +742,24 @@ function renderStatus(status: ClientStatus) {
   startedValue.textContent = formatStarted(status.started_at);
   logsBox.textContent = status.logs.length > 0 ? status.logs.slice().reverse().join('\n') : t('noLogs');
   renderNotice(status.notice);
+  if (status.state === 'connected') void showWelcomeAfterFirstConnect();
+}
+
+async function showWelcomeAfterFirstConnect() {
+  if (!currentProfile || currentProfile.welcome_dismissed || welcomeCheckInFlight || !welcomeOverlay.hidden) return;
+  welcomeCheckInFlight = true;
+  try {
+    const online = await invoke<boolean>('check_public_internet');
+    if (!online) return;
+    currentProfile = await invoke<ClientProfile>('get_profile');
+    if (!currentProfile.welcome_dismissed) {
+      welcomeOverlay.hidden = false;
+    }
+  } catch (error) {
+    console.warn('welcome internet check failed', error);
+  } finally {
+    welcomeCheckInFlight = false;
+  }
 }
 
 function showTab(tab: string) {

@@ -245,6 +245,32 @@ fn dismiss_welcome(state: State<AppState>) -> Result<ClientProfile, String> {
 }
 
 #[tauri::command]
+fn check_public_internet() -> bool {
+    let client = match reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()
+    {
+        Ok(client) => client,
+        Err(_) => return false,
+    };
+
+    for url in [
+        "https://www.google.com/generate_204",
+        "https://api.ipify.org",
+    ] {
+        if client
+            .get(url)
+            .send()
+            .and_then(|response| response.error_for_status())
+            .is_ok()
+        {
+            return true;
+        }
+    }
+    false
+}
+
+#[tauri::command]
 fn get_servers(state: State<AppState>) -> Result<Vec<ServerProfile>, String> {
     Ok(state.store.lock().map_err(lock_error)?.servers.clone())
 }
@@ -1272,6 +1298,7 @@ pub fn run() {
             get_profile,
             save_profile,
             dismiss_welcome,
+            check_public_internet,
             get_servers,
             import_servers,
             select_server,
