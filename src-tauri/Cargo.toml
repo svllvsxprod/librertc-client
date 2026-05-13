@@ -1,6 +1,6 @@
 [package]
 name = "librertc-client"
-version = "0.1.0"
+version = "0.1.1"
 description = "LibreRTC Windows desktop client"
 authors = ["svllvsxprod"]
 edition = "2021"

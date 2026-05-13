@@ -8,11 +8,14 @@ use std::os::windows::process::CommandExt;
 use std::{
     collections::BTreeMap,
     fs,
-    io::{BufRead, BufReader, Read},
+    io::{BufRead, BufReader, Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
     path::PathBuf,
     process::{Command, Stdio},
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
     thread,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
@@ -56,6 +59,7 @@ struct ClientStore {
     runtime_pid: Option<u32>,
     tun_active: bool,
     system_proxy_backup: Option<SystemProxyBackup>,
+    http_proxy: Option<HttpProxyRuntime>,
 }
 
 impl ClientStore {
@@ -69,6 +73,7 @@ impl ClientStore {
             runtime_pid: None,
             tun_active: false,
             system_proxy_backup: None,
+            http_proxy: None,
         }
     }
 
@@ -88,6 +93,12 @@ struct SystemProxyBackup {
     proxy_enable: Option<String>,
     proxy_server: Option<String>,
     proxy_override: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+struct HttpProxyRuntime {
+    address: String,
+    running: Arc<AtomicBool>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -533,16 +544,29 @@ fn connect_inner(state: &AppState) -> Result<ClientStatus, String> {
         false
     };
 
-    let proxy_backup = if tun_requested {
+    let http_proxy = if tun_requested {
         None
     } else {
-        match enable_system_proxy(&runtime_profile) {
-            Ok(backup) => Some(backup),
+        match start_http_proxy(&runtime_profile) {
+            Ok(proxy) => Some(proxy),
             Err(err) => {
                 kill_process(pid);
                 return Err(err);
             }
         }
+    };
+
+    let proxy_backup = if let Some(proxy) = &http_proxy {
+        match enable_system_proxy(&proxy.address) {
+            Ok(backup) => Some(backup),
+            Err(err) => {
+                stop_http_proxy(http_proxy.as_ref());
+                kill_process(pid);
+                return Err(err);
+            }
+        }
+    } else {
+        None
     };
 
     {
@@ -552,13 +576,18 @@ fn connect_inner(state: &AppState) -> Result<ClientStatus, String> {
             store.append_log("System proxy left unchanged; TUN routes system traffic directly");
         } else {
             store.append_log(format!(
-                "System proxy enabled: socks={}",
-                socks_address(&runtime_profile)
+                "System proxy enabled: http={} -> socks={}",
+                http_proxy
+                    .as_ref()
+                    .map(|proxy| proxy.address.as_str())
+                    .unwrap_or(""),
+                socks_address(&runtime_profile),
             ));
         }
         store.runtime_pid = Some(pid);
         store.tun_active = tun_active;
         store.system_proxy_backup = proxy_backup;
+        store.http_proxy = http_proxy;
         store.status.state = "connected".into();
         store.status.mode = runtime_profile.mode.clone();
         store.status.socks = socks_address(&runtime_profile);
@@ -605,6 +634,8 @@ fn connect_inner(state: &AppState) -> Result<ClientStatus, String> {
                         store.append_log("System proxy restored");
                     }
                 }
+                let http_proxy = store.http_proxy.take();
+                stop_http_proxy(http_proxy.as_ref());
                 store.status.state = "disconnected".into();
                 store.status.started_at.clear();
                 store.status.download_bps = 0;
@@ -628,24 +659,26 @@ fn disconnect(state: State<AppState>) -> Result<ClientStatus, String> {
 }
 
 fn disconnect_inner(state: &AppState) -> Result<ClientStatus, String> {
-    let (pid, tun_active, proxy_backup) = {
+    let (pid, tun_active, proxy_backup, http_proxy) = {
         let mut store = state.store.lock().map_err(lock_error)?;
         store.append_log("Disconnect requested");
         let pid = store.runtime_pid.take();
         let tun_active = store.tun_active;
         store.tun_active = false;
         let proxy_backup = store.system_proxy_backup.take();
+        let http_proxy = store.http_proxy.take();
         store.status.state = "disconnected".into();
         store.status.started_at.clear();
         store.status.notice.clear();
         store.status.download_bps = 0;
         store.status.upload_bps = 0;
-        (pid, tun_active, proxy_backup)
+        (pid, tun_active, proxy_backup, http_proxy)
     };
 
     if let Some(backup) = proxy_backup {
         restore_system_proxy(&backup)?;
     }
+    stop_http_proxy(http_proxy.as_ref());
     if tun_active {
         stop_net_service_tun()?;
     }
@@ -1187,6 +1220,232 @@ fn kill_process_by_name(name: &str) {
     }
 }
 
+fn start_http_proxy(profile: &ClientProfile) -> Result<HttpProxyRuntime, String> {
+    let listener = TcpListener::bind((profile.socks_host.as_str(), 0))
+        .map_err(|err| format!("start HTTP system proxy: {err}"))?;
+    let address = listener
+        .local_addr()
+        .map_err(|err| format!("HTTP proxy local address: {err}"))?
+        .to_string();
+    listener
+        .set_nonblocking(true)
+        .map_err(|err| format!("HTTP proxy nonblocking: {err}"))?;
+
+    let running = Arc::new(AtomicBool::new(true));
+    let thread_running = running.clone();
+    let socks_host = profile.socks_host.clone();
+    let socks_port = profile.socks_port;
+    thread::spawn(move || {
+        while thread_running.load(Ordering::Relaxed) {
+            match listener.accept() {
+                Ok((client, _)) => {
+                    let socks_host = socks_host.clone();
+                    thread::spawn(move || {
+                        let _ = handle_http_proxy_client(client, &socks_host, socks_port);
+                    });
+                }
+                Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => {
+                    thread::sleep(Duration::from_millis(50));
+                }
+                Err(_) => break,
+            }
+        }
+    });
+
+    Ok(HttpProxyRuntime { address, running })
+}
+
+fn stop_http_proxy(proxy: Option<&HttpProxyRuntime>) {
+    if let Some(proxy) = proxy {
+        proxy.running.store(false, Ordering::Relaxed);
+        let _ = TcpStream::connect(&proxy.address);
+    }
+}
+
+fn handle_http_proxy_client(
+    mut client: TcpStream,
+    socks_host: &str,
+    socks_port: u16,
+) -> Result<(), String> {
+    let request = read_http_proxy_header(&mut client)?;
+    let header = String::from_utf8_lossy(&request);
+    let mut lines = header.split("\r\n");
+    let first_line = lines
+        .next()
+        .ok_or_else(|| "HTTP proxy request is empty".to_string())?;
+    let mut parts = first_line.split_whitespace();
+    let method = parts.next().unwrap_or_default();
+    let target = parts.next().unwrap_or_default();
+
+    if method.eq_ignore_ascii_case("CONNECT") {
+        let (host, port) = parse_host_port(target, 443)?;
+        let upstream = socks_connect(socks_host, socks_port, &host, port)?;
+        client
+            .write_all(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+            .map_err(|err| format!("HTTP proxy CONNECT response: {err}"))?;
+        pipe_streams(client, upstream);
+        return Ok(());
+    }
+
+    let host = http_header_value(&header, "Host")
+        .ok_or_else(|| "HTTP proxy request has no Host header".to_string())?;
+    let (host, port) = parse_host_port(&host, 80)?;
+    let mut upstream = socks_connect(socks_host, socks_port, &host, port)?;
+    let rewritten = rewrite_http_proxy_request(&request);
+    upstream
+        .write_all(&rewritten)
+        .map_err(|err| format!("HTTP proxy forward request: {err}"))?;
+    pipe_streams(client, upstream);
+    Ok(())
+}
+
+fn read_http_proxy_header(stream: &mut TcpStream) -> Result<Vec<u8>, String> {
+    let mut data = Vec::new();
+    let mut buffer = [0_u8; 1024];
+    while data.len() < 64 * 1024 {
+        let read = stream
+            .read(&mut buffer)
+            .map_err(|err| format!("HTTP proxy read request: {err}"))?;
+        if read == 0 {
+            break;
+        }
+        data.extend_from_slice(&buffer[..read]);
+        if data.windows(4).any(|chunk| chunk == b"\r\n\r\n") {
+            return Ok(data);
+        }
+    }
+    Err("HTTP proxy request header is incomplete".into())
+}
+
+fn parse_host_port(value: &str, default_port: u16) -> Result<(String, u16), String> {
+    let value = value.trim();
+    if let Some((host, port)) = value.rsplit_once(':') {
+        if !host.contains(']') {
+            let port = port
+                .parse::<u16>()
+                .map_err(|err| format!("invalid proxy target port: {err}"))?;
+            return Ok((host.trim_matches(['[', ']']).to_string(), port));
+        }
+    }
+    Ok((value.trim_matches(['[', ']']).to_string(), default_port))
+}
+
+fn http_header_value(header: &str, name: &str) -> Option<String> {
+    header.lines().find_map(|line| {
+        let (key, value) = line.split_once(':')?;
+        if key.eq_ignore_ascii_case(name) {
+            Some(value.trim().to_string())
+        } else {
+            None
+        }
+    })
+}
+
+fn rewrite_http_proxy_request(request: &[u8]) -> Vec<u8> {
+    let Some(line_end) = request.windows(2).position(|chunk| chunk == b"\r\n") else {
+        return request.to_vec();
+    };
+    let first_line = String::from_utf8_lossy(&request[..line_end]);
+    let mut parts = first_line.split_whitespace();
+    let method = parts.next().unwrap_or_default();
+    let target = parts.next().unwrap_or_default();
+    let version = parts.next().unwrap_or("HTTP/1.1");
+    if !target.starts_with("http://") {
+        return request.to_vec();
+    }
+    let path_start = target[7..]
+        .find('/')
+        .map(|index| index + 7)
+        .unwrap_or(target.len());
+    let path = &target[path_start..];
+    let mut rewritten = format!(
+        "{method} {} {version}\r\n",
+        if path.is_empty() { "/" } else { path }
+    )
+    .into_bytes();
+    rewritten.extend_from_slice(&request[line_end + 2..]);
+    rewritten
+}
+
+fn socks_connect(
+    socks_host: &str,
+    socks_port: u16,
+    target_host: &str,
+    target_port: u16,
+) -> Result<TcpStream, String> {
+    let mut stream = TcpStream::connect((socks_host, socks_port))
+        .map_err(|err| format!("connect local SOCKS5: {err}"))?;
+    stream
+        .write_all(&[0x05, 0x01, 0x00])
+        .map_err(|err| format!("SOCKS5 auth request: {err}"))?;
+    let mut auth = [0_u8; 2];
+    stream
+        .read_exact(&mut auth)
+        .map_err(|err| format!("SOCKS5 auth response: {err}"))?;
+    if auth != [0x05, 0x00] {
+        return Err("SOCKS5 proxy rejected no-auth method".into());
+    }
+
+    let host_bytes = target_host.as_bytes();
+    if host_bytes.len() > u8::MAX as usize {
+        return Err("SOCKS5 target host is too long".into());
+    }
+    let mut request = Vec::with_capacity(7 + host_bytes.len());
+    request.extend_from_slice(&[0x05, 0x01, 0x00, 0x03, host_bytes.len() as u8]);
+    request.extend_from_slice(host_bytes);
+    request.extend_from_slice(&target_port.to_be_bytes());
+    stream
+        .write_all(&request)
+        .map_err(|err| format!("SOCKS5 connect request: {err}"))?;
+
+    let mut response = [0_u8; 4];
+    stream
+        .read_exact(&mut response)
+        .map_err(|err| format!("SOCKS5 connect response: {err}"))?;
+    if response[0] != 0x05 || response[1] != 0x00 {
+        return Err(format!("SOCKS5 connect failed with code {}", response[1]));
+    }
+    match response[3] {
+        0x01 => read_exact_discard(&mut stream, 6)?,
+        0x03 => {
+            let mut length = [0_u8; 1];
+            stream
+                .read_exact(&mut length)
+                .map_err(|err| format!("SOCKS5 domain length: {err}"))?;
+            read_exact_discard(&mut stream, length[0] as usize + 2)?;
+        }
+        0x04 => read_exact_discard(&mut stream, 18)?,
+        value => return Err(format!("SOCKS5 returned unsupported address type {value}")),
+    }
+    Ok(stream)
+}
+
+fn read_exact_discard(stream: &mut TcpStream, length: usize) -> Result<(), String> {
+    let mut buffer = vec![0_u8; length];
+    stream
+        .read_exact(&mut buffer)
+        .map_err(|err| format!("SOCKS5 response address: {err}"))
+}
+
+fn pipe_streams(mut left: TcpStream, mut right: TcpStream) {
+    let Ok(mut left_reader) = left.try_clone() else {
+        return;
+    };
+    let Ok(mut right_reader) = right.try_clone() else {
+        return;
+    };
+    let left_to_right = thread::spawn(move || {
+        let _ = std::io::copy(&mut left_reader, &mut right);
+        let _ = right.shutdown(std::net::Shutdown::Both);
+    });
+    let right_to_left = thread::spawn(move || {
+        let _ = std::io::copy(&mut right_reader, &mut left);
+        let _ = left.shutdown(std::net::Shutdown::Both);
+    });
+    let _ = left_to_right.join();
+    let _ = right_to_left.join();
+}
+
 fn restore_system_proxy(backup: &SystemProxyBackup) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
@@ -1204,22 +1463,18 @@ fn restore_system_proxy(backup: &SystemProxyBackup) -> Result<(), String> {
     Ok(())
 }
 
-fn enable_system_proxy(profile: &ClientProfile) -> Result<SystemProxyBackup, String> {
+fn enable_system_proxy(proxy_address: &str) -> Result<SystemProxyBackup, String> {
     let backup = system_proxy_backup()?;
     #[cfg(target_os = "windows")]
     {
         reg_set("ProxyEnable", "REG_DWORD", "1")?;
-        reg_set(
-            "ProxyServer",
-            "REG_SZ",
-            &format!("socks={}", socks_address(profile)),
-        )?;
+        reg_set("ProxyServer", "REG_SZ", proxy_address)?;
         reg_set("ProxyOverride", "REG_SZ", "<local>")?;
         notify_proxy_change();
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let _ = profile;
+        let _ = proxy_address;
     }
     Ok(backup)
 }
@@ -1363,7 +1618,7 @@ fn planned_steps(mode: &str) -> Vec<String> {
     } else {
         vec![
             "Start olcrtc SOCKS runtime".into(),
-            "Expose local proxy".into(),
+            "Start local HTTP system proxy".into(),
             "Use Windows system proxy".into(),
         ]
     }
