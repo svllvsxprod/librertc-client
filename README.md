@@ -5,40 +5,8 @@
 <h1 align="center">LibreRTC Client</h1>
 
 <p align="center">
-  A compact Windows desktop client for LibreRTC with Proxy and TUN modes.
+  Лёгкий Windows-клиент для LibreRTC с Proxy и TUN режимами, системным tray, реальной телеметрией трафика и встроенным TUN-сервисом на sing-box.
 </p>
-
-<table align="center">
-  <tr>
-    <td align="center" width="760">
-      <h3>Keep LibreRTC independent</h3>
-      <p>If this project helps you, support further development, testing, and network tooling.</p>
-      <a href="https://t.me/tribute/app?startapp=dK9j">
-        <img alt="Support LibreRTC via Tribute" src="https://img.shields.io/badge/Support%20LibreRTC-Tribute-0EA5E9?style=for-the-badge&logo=telegram&logoColor=white&labelColor=111827">
-      </a>
-      <a href="https://nowpayments.io/donation/svllvsx">
-        <img alt="Support with crypto via NOWPayments" src="https://img.shields.io/badge/Support%20LibreRTC-NOWPayments-22C55E?style=for-the-badge&logo=bitcoin&logoColor=white&labelColor=111827">
-      </a>
-    </td>
-  </tr>
-</table>
-
-<table align="center">
-  <tr>
-    <td align="center" width="370">
-      <a href="https://t.me/svllvsxprod">
-        <img alt="svllvsxprod Telegram" src="https://img.shields.io/badge/Telegram-svllvsxprod-26A5E4?style=for-the-badge&logo=telegram&logoColor=white&labelColor=111827">
-      </a>
-      <p>Project updates, builds, and release notes.</p>
-    </td>
-    <td align="center" width="370">
-      <a href="https://t.me/openlibrecommunity">
-        <img alt="Open Libre Community Telegram" src="https://img.shields.io/badge/Telegram-Open%20Libre%20Community-26A5E4?style=for-the-badge&logo=telegram&logoColor=white&labelColor=111827">
-      </a>
-      <p>Community chat, feedback, and testing.</p>
-    </td>
-  </tr>
-</table>
 
 <p align="center">
   <img alt="Windows" src="https://img.shields.io/badge/Windows-Tauri%20v2-0078D4?style=for-the-badge&logo=windows&logoColor=white">
@@ -48,44 +16,74 @@
 </p>
 
 <p align="center">
-  <a href="#screenshots">Screenshots</a> ·
-  <a href="#what-it-does">What It Does</a> ·
-  <a href="#features">Features</a> ·
-  <a href="#build">Build</a> ·
-  <a href="#security-model">Security</a>
+  <a href="#скриншоты">Скриншоты</a> ·
+  <a href="#что-это">Что это</a> ·
+  <a href="#возможности">Возможности</a> ·
+  <a href="#сборка">Сборка</a> ·
+  <a href="#безопасность">Безопасность</a>
 </p>
 
-## Screenshots
+<table align="center">
+  <tr>
+    <td align="center" width="760">
+      <h3>Поддержать независимую разработку LibreRTC</h3>
+      <p>Если проект полезен, можно поддержать разработку, тестирование Windows-клиента и сетевой инфраструктуры.</p>
+      <a href="https://t.me/tribute/app?startapp=dK9j">
+        <img src="screens/donate-tribute.svg" width="360" alt="Support LibreRTC via Tribute" />
+      </a>
+      <a href="https://nowpayments.io/donation/svllvsx">
+        <img src="screens/donate-nowpayments.svg" width="360" alt="Donate with NOWPayments" />
+      </a>
+    </td>
+  </tr>
+</table>
+
+<table align="center">
+  <tr>
+    <td align="center" width="370">
+      <a href="https://t.me/svllvsxprod">
+        <img src="screens/telegram-updates.svg" width="340" alt="svllvsxprod Telegram" />
+      </a>
+    </td>
+    <td align="center" width="370">
+      <a href="https://t.me/openlibrecommunity">
+        <img src="screens/telegram-community.svg" width="340" alt="Open Libre Community Telegram" />
+      </a>
+    </td>
+  </tr>
+</table>
+
+## Скриншоты
 
 <p align="center">
-  <img src="screens/1.png" width="150" alt="Connection screen" />
-  <img src="screens/2.png" width="150" alt="Profiles" />
-  <img src="screens/3.png" width="150" alt="Logs" />
-  <img src="screens/4.png" width="150" alt="Settings" />
-  <img src="screens/5.png" width="150" alt="Tray flow" />
+  <img src="screens/1.png" width="150" alt="Экран подключения" />
+  <img src="screens/2.png" width="150" alt="Профили" />
+  <img src="screens/3.png" width="150" alt="Логи" />
+  <img src="screens/4.png" width="150" alt="Настройки" />
+  <img src="screens/5.png" width="150" alt="Tray" />
 </p>
 
-## What It Does
+## Что это
 
-LibreRTC Client is a Windows desktop app for importing `olcrtc://` profiles and running a local LibreRTC connection without exposing runtime details to the user.
+LibreRTC Client импортирует `olcrtc://` профили и запускает локальное подключение к LibreRTC node без ручной настройки runtime-компонентов пользователем.
 
-It supports two operating modes:
+Клиент поддерживает два режима:
 
-- Proxy mode: starts `olcrtc.exe` and exposes a local SOCKS proxy.
-- TUN mode: starts `olcrtc.exe`, then routes system traffic through `librertc-net-service.exe` with an embedded sing-box engine.
+- Proxy: запускает `olcrtc.exe` и поднимает локальный SOCKS proxy.
+- TUN: запускает `olcrtc.exe`, затем направляет системный трафик через `librertc-net-service.exe` со встроенным sing-box engine.
 
-## Features
+## Возможности
 
-- Import and store multiple LibreRTC server profiles.
-- Proxy mode with automatic local port selection.
-- TUN mode through a Windows service and embedded sing-box.
-- Real-time traffic counters from `olcrtc` runtime stats.
-- RU/EN interface language.
-- Fixed-size frameless Windows UI with tray controls.
-- External community/support links opened through the system browser.
-- Local Zector font bundle; no web font linking.
+- Импорт и хранение нескольких LibreRTC профилей.
+- Proxy режим с автоматическим выбором свободного локального порта.
+- TUN режим через Windows service и embedded sing-box.
+- Реальная телеметрия download/upload из runtime-статистики `olcrtc`.
+- RU/EN интерфейс.
+- Fixed-size frameless UI, custom titlebar и tray controls.
+- Внешние ссылки открываются только через системный браузер.
+- Локальный Inter Regular font bundle, без web-font ссылок.
 
-## Architecture
+## Архитектура
 
 ```text
 Windows desktop app
@@ -96,45 +94,45 @@ Windows desktop app
   -> LibreRTC node
 ```
 
-TUN mode keeps the Windows service installed after disconnect. Disconnect stops only the embedded tunnel engine.
+TUN service остаётся установленным после отключения. Disconnect останавливает только embedded tunnel engine.
 
-## Requirements
+## Требования
 
 - Windows 10/11.
 - WebView2 Runtime.
 - Rust stable toolchain.
-- Node.js and npm.
-- Go toolchain for rebuilding `librertc-net-service.exe`.
-- `olcrtc.exe` placed next to the released client executable at runtime.
+- Node.js и npm.
+- Go toolchain для пересборки `librertc-net-service.exe`.
+- `olcrtc.exe` рядом с release `librertc-client.exe` во время запуска.
 
-## Build
+## Сборка
 
-Install frontend dependencies:
+Установить frontend dependencies:
 
 ```bash
 npm install
 ```
 
-Build the frontend:
+Собрать frontend:
 
 ```bash
 npm run build
 ```
 
-Build the Tauri client:
+Собрать Tauri-клиент:
 
 ```bash
 npm run tauri -- build
 ```
 
-Build the TUN service:
+Собрать TUN service:
 
 ```bash
 cd librertc-net-service
 go build -tags with_gvisor -ldflags "-H=windowsgui" -o ../src-tauri/target/release/librertc-net-service.exe ./cmd/librertc-net-service
 ```
 
-Runtime files expected next to `librertc-client.exe`:
+Runtime-файлы рядом с `librertc-client.exe`:
 
 ```text
 librertc-client.exe
@@ -142,23 +140,27 @@ librertc-net-service.exe
 olcrtc.exe
 ```
 
-## Project Layout
+## Структура
 
 ```text
 src/                    TypeScript UI, styles, local assets
 src-tauri/              Rust Tauri backend and Windows shell integration
 librertc-net-service/   Go Windows service with embedded sing-box
-screens/                Public screenshots for documentation
+screens/                Screenshots and README assets
 ```
 
-## Security Model
+## Безопасность
 
-- Live `olcrtc://` profiles are not committed.
-- Runtime profile data is stored under `%LOCALAPPDATA%\LibreRTC\client`.
-- Build outputs, binaries, local imports, and profile files are ignored by git.
-- External links are opened only through a strict backend allowlist.
-- TUN mode blocks IPv6 in the current MVP to avoid leaks.
+- Live `olcrtc://` профили не коммитятся.
+- Runtime profile хранится в `%LOCALAPPDATA%\LibreRTC\client`.
+- Build outputs, binaries, local imports и profile files исключены из git.
+- Внешние ссылки проходят через strict backend allowlist.
+- В текущем MVP TUN режим блокирует IPv6, чтобы избежать leak.
 
-## Notes
+## Теги
 
-This repository contains the desktop client only. The core runtime and server node are maintained separately under the LibreRTC project.
+`librertc` `vpn-client` `tauri` `rust` `typescript` `windows` `tun` `sing-box` `socks-proxy` `webrtc`
+
+## Примечание
+
+Этот репозиторий содержит только desktop client. Core runtime и server node ведутся отдельно в рамках LibreRTC.
