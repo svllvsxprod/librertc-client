@@ -211,16 +211,47 @@ app.innerHTML = `
               <div class="server-dropdown" id="serverDropdown">
                 <button class="server-dropdown-trigger" id="serverDropdownTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
                   <span id="serverDropdownValue">No server imported</span>
-                  <span class="server-dropdown-arrow">⌄</span>
+                  <span class="server-dropdown-arrow" aria-hidden="true"></span>
                 </button>
                 <div class="server-dropdown-menu" id="serverDropdownMenu" role="listbox"></div>
               </div>
             </div>
           </div>
 
-          <button class="power" id="powerButton" type="button" aria-label="Connect or disconnect">
-            <span class="power-ring"></span>
-            <span id="powerIcon">Connect</span>
+          <button class="power switch" id="powerButton" type="button" aria-label="Connect or disconnect">
+            <span class="switch__base-outer"></span>
+            <span class="switch__base-inner"></span>
+            <svg class="switch__base-neon" viewBox="0 0 40 24" width="40px" height="24px" aria-hidden="true" focusable="false">
+              <defs>
+                <filter id="switch-glow">
+                  <feGaussianBlur result="coloredBlur" stdDeviation="1"></feGaussianBlur>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"></feMergeNode>
+                    <feMergeNode in="SourceGraphic"></feMergeNode>
+                  </feMerge>
+                </filter>
+                <linearGradient id="switch-gradient1" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="hsl(var(--on-hue1),90%,70%)" />
+                  <stop offset="100%" stop-color="hsl(var(--on-hue2),90%,70%)" />
+                </linearGradient>
+                <linearGradient id="switch-gradient2" x1="0.7" y1="0" x2="0.3" y2="1">
+                  <stop offset="25%" stop-color="hsla(var(--on-hue1),90%,70%,0)" />
+                  <stop offset="50%" stop-color="hsla(var(--on-hue1),90%,70%,0.3)" />
+                  <stop offset="100%" stop-color="hsla(var(--on-hue2),90%,70%,0.3)" />
+                </linearGradient>
+              </defs>
+              <path fill="none" filter="url(#switch-glow)" stroke="url(#switch-gradient1)" stroke-width="1" stroke-dasharray="0 100 0" stroke-dashoffset="0" stroke-linecap="round" pathLength="100" d="m.5,12C.5,5.649,5.649.5,12,.5h16c6.351,0,11.5,5.149,11.5,11.5s-5.149,11.5-11.5,11.5H12C5.649,23.5.5,18.351.5,12Z" />
+            </svg>
+            <span class="switch__knob-shadow"></span>
+            <span class="switch__knob-container">
+              <span class="switch__knob">
+                <svg class="switch__knob-neon" viewBox="0 0 48 48" width="48px" height="48px" aria-hidden="true" focusable="false">
+                  <circle fill="none" stroke="url(#switch-gradient2)" stroke-dasharray="0 62.5 0 37.5" stroke-linecap="round" stroke-width="1" pathLength="100" r="23" cx="24" cy="24" transform="rotate(-112.5,24,24)" />
+                </svg>
+              </span>
+            </span>
+            <span class="switch__led"></span>
+            <span class="switch__text" id="powerIcon">Connect</span>
           </button>
 
           <p class="notice" id="noticeBox"></p>
@@ -231,6 +262,13 @@ app.innerHTML = `
                 <div>
                   <span data-i18n="localProxy">Local proxy</span>
                   <strong id="socksValue">127.0.0.1:8808</strong>
+                </div>
+              </div>
+              <div class="metric-card">
+                <span class="metric-icon">${clockIcon}</span>
+                <div>
+                  <span data-i18n="started">Started</span>
+                  <strong id="startedValue">-</strong>
                 </div>
               </div>
               <div class="metric-card">
@@ -245,13 +283,6 @@ app.innerHTML = `
                 <div>
                   <span data-i18n="upload">Upload</span>
                   <strong id="uploadValue">0 B/s</strong>
-                </div>
-              </div>
-              <div class="metric-card">
-                <span class="metric-icon">${clockIcon}</span>
-                <div>
-                  <span data-i18n="started">Started</span>
-                  <strong id="startedValue">-</strong>
               </div>
             </div>
           </div>
@@ -304,7 +335,7 @@ app.innerHTML = `
                   <select id="languageSelect" class="native-language-select" tabindex="-1" aria-hidden="true"><option value="en">English</option><option value="ru">Русский</option></select>
                   <button class="language-dropdown-trigger" id="languageDropdownTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
                     <span id="languageDropdownValue">English</span>
-                    <span class="language-dropdown-arrow">⌄</span>
+                    <span class="language-dropdown-arrow" aria-hidden="true"></span>
                   </button>
                   <div class="language-dropdown-menu" id="languageDropdownMenu" role="listbox">
                     <button class="language-dropdown-option" type="button" role="option" data-language="en"><strong>English</strong><span>Interface language</span></button>

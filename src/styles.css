@@ -347,12 +347,18 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: space-between;
   padding: 16px;
 }
 
 .server-picker {
   display: block;
   width: 100%;
+}
+
+.connect-card > .switch {
+  flex: 0 0 auto;
+  top: -8px;
 }
 
 .server-picker label,
@@ -461,9 +467,18 @@ select option:checked {
   height: 26px;
   border-left: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--primary);
-  font-size: 16px;
-  line-height: 1;
   transition: transform 160ms ease;
+}
+
+.server-dropdown-arrow::before,
+.language-dropdown-arrow::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transform-origin: center;
 }
 
 .server-dropdown.open .server-dropdown-arrow,
@@ -553,101 +568,224 @@ select:focus {
   box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.08);
 }
 
-.power {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 176px;
-  height: 176px;
-  margin: auto auto;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background:
-    radial-gradient(circle at 50% 34%, rgba(255, 255, 255, 0.18), transparent 34%),
-    linear-gradient(145deg, rgba(82, 214, 126, 0.52), rgba(27, 112, 62, 0.7));
-  color: rgba(4, 35, 18, 0.92);
-  font-size: 22px;
-  font-weight: 950;
-  letter-spacing: -0.04em;
-  box-shadow: 0 0 18px rgba(82, 214, 126, 0.11), 0 16px 44px rgba(0, 0, 0, 0.32), inset 0 0 30px rgba(255, 255, 255, 0.09);
-  backdrop-filter: blur(24px) saturate(92%);
-  transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
+.switch,
+.switch__input {
+  -webkit-tap-highlight-color: #0000;
 }
 
-.power:disabled {
+.switch {
+  --hue: 223;
+  --off-hue: 3;
+  --on-hue1: 123;
+  --on-hue2: 168;
+  --primary: hsl(var(--hue), 90%, 50%);
+  --trans-dur: 0.6s;
+  --trans-timing: cubic-bezier(0.65, 0, 0.35, 1);
+  display: block;
+  margin: auto;
+  position: relative;
+  width: 220px;
+  height: 132px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.switch:disabled {
   cursor: progress;
 }
 
-.power:hover:not(:disabled) {
-  transform: translateY(-1px) scale(1.01);
+.switch__base-outer,
+.switch__base-inner {
+  display: block;
+  position: absolute;
+  pointer-events: none;
 }
 
-.power::before {
-  content: "";
+.switch__base-outer {
+  border-radius: 55px;
+  box-shadow:
+    -5px -5px 10px hsl(var(--hue), 10%, 30%),
+    5px 5px 5px hsl(var(--hue), 10%, 30%) inset,
+    5px 5px 10px hsl(0, 0%, 0%),
+    -5px -5px 5px hsl(var(--hue), 10%, 5%) inset;
+  top: 5.5px;
+  left: 5.5px;
+  width: 209px;
+  height: 121px;
+}
+
+.switch__base-inner {
+  border-radius: 49.5px;
+  box-shadow:
+    -10px -10px 10px hsl(var(--hue), 10%, 30%) inset,
+    2.5px 2.5px 5px hsla(var(--hue), 10%, 30%),
+    5px 10px 10px hsl(var(--hue), 10%, 5%) inset,
+    -2.5px -2.5px 5px hsla(var(--hue), 10%, 5%);
+  top: 16.5px;
+  left: 16.5px;
+  width: 187px;
+  height: 99px;
+}
+
+.switch__base-neon {
+  display: block;
+  overflow: visible;
   position: absolute;
-  inset: -9px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  border-top-color: rgba(0, 227, 253, 0);
-  border-right-color: rgba(255, 215, 0, 0);
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+.switch__base-neon path {
+  stroke-dasharray: 0 100 0;
+  stroke-dashoffset: 0;
   opacity: 0;
+  transition:
+    opacity var(--trans-dur) steps(1, end),
+    stroke-dasharray var(--trans-dur) var(--trans-timing);
 }
 
-.power span:last-child {
-  position: relative;
-  z-index: 1;
-}
-
-.power-ring {
+.switch__knob,
+.switch__knob-container {
+  border-radius: 44px;
+  display: block;
   position: absolute;
-  inset: 11px;
-  border: 1px solid rgba(4, 35, 18, 0.2);
+  pointer-events: none;
+}
+
+.switch__knob {
+  background-color: hsl(var(--hue), 10%, 15%);
+  background-image:
+    radial-gradient(88% 88% at 50% 50%, hsl(var(--hue), 10%, 20%) 47%, hsla(var(--hue), 10%, 20%, 0) 50%),
+    radial-gradient(88% 88% at 47% 47%, hsl(var(--hue), 10%, 85%) 45%, hsla(var(--hue), 10%, 85%, 0) 50%),
+    radial-gradient(65% 70% at 40% 60%, hsl(var(--hue), 10%, 20%) 46%, hsla(var(--hue), 10%, 20%, 0) 50%);
+  box-shadow:
+    -2.75px -2.75px 2.75px hsl(var(--hue), 10%, 15%) inset,
+    -5.5px -5.5px 2.75px hsl(var(--hue), 10%, 5%) inset,
+    33px 11px 5.5px hsla(0, 0%, 0%, 0.8);
+  width: 88px;
+  height: 88px;
+  transition: transform var(--trans-dur) var(--trans-timing);
+}
+
+.switch__knob-container {
+  overflow: hidden;
+  top: 22px;
+  left: 22px;
+  width: 176px;
+  height: 88px;
+}
+
+.switch__knob-neon {
+  display: block;
+  width: 88px;
+  height: auto;
+}
+
+.switch__knob-neon circle {
+  opacity: 0;
+  stroke-dasharray: 0 62.5 0 37.5;
+  stroke-dashoffset: 0;
+  transition:
+    opacity var(--trans-dur) steps(1, end),
+    stroke-dasharray var(--trans-dur) var(--trans-timing);
+}
+
+.switch__knob-shadow {
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.045);
-  backdrop-filter: blur(10px);
+  box-shadow: 5.5px 5.5px 5.5px hsla(0, 0%, 0%, 0.9);
+  display: block;
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  width: 88px;
+  height: 88px;
+  transition: transform var(--trans-dur) var(--trans-timing);
+  pointer-events: none;
 }
 
-.power.running {
-  background:
-    radial-gradient(circle at 50% 34%, rgba(255, 255, 255, 0.16), transparent 34%),
-    linear-gradient(145deg, rgba(255, 93, 93, 0.46), rgba(133, 36, 43, 0.7));
-  color: rgba(46, 7, 9, 0.92);
-  box-shadow: 0 0 18px rgba(255, 93, 93, 0.11), 0 16px 44px rgba(0, 0, 0, 0.32), inset 0 0 30px rgba(255, 255, 255, 0.08);
+.switch__led {
+  background-color: hsl(var(--off-hue), 90%, 70%);
+  border-radius: 50%;
+  box-shadow:
+    0 -2.5px 2.5px hsl(var(--off-hue), 90%, 40%) inset,
+    0 0 5px hsla(var(--off-hue), 90%, 70%, 0.3),
+    0 0 5px hsla(var(--off-hue), 90%, 70%, 0.3),
+    5px 5px 5px hsla(0, 0%, 0%, 0.5);
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 11px;
+  height: 11px;
+  transition:
+    background-color var(--trans-dur) var(--trans-timing),
+    box-shadow var(--trans-dur) var(--trans-timing);
+  pointer-events: none;
 }
 
-.power.connecting {
-  background:
-    radial-gradient(circle at 50% 34%, rgba(255, 255, 255, 0.16), transparent 34%),
-    linear-gradient(135deg, rgba(82, 214, 126, 0.42), rgba(255, 93, 93, 0.34));
-  color: rgba(8, 17, 19, 0.9);
-  box-shadow: 0 0 20px rgba(82, 214, 126, 0.09), 0 0 12px rgba(255, 93, 93, 0.08), 0 16px 44px rgba(0, 0, 0, 0.32), inset 0 0 32px rgba(255, 255, 255, 0.09);
+.switch__text {
+  overflow: hidden;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+}
+
+.switch.running .switch__led {
+  background-color: hsl(var(--on-hue1), 90%, 70%);
+  box-shadow:
+    0 -2.5px 2.5px hsl(var(--on-hue1), 90%, 40%) inset,
+    0 -5px 5px hsla(var(--on-hue1), 90%, 70%, 0.3),
+    0 5px 5px hsla(var(--on-hue1), 90%, 70%, 0.3),
+    5px 5px 5px hsla(0, 0%, 0%, 0.5);
+}
+
+.switch.running .switch__base-neon path {
+  opacity: 1;
+  stroke-dasharray: 50 0 50;
+  transition-timing-function: steps(1, start), var(--trans-timing);
+}
+
+.switch.running .switch__knob-shadow,
+.switch.running .switch__knob-container .switch__knob {
+  transform: translateX(100%);
+}
+
+.switch.running .switch__knob-container .switch__knob-neon circle {
+  opacity: 1;
+  stroke-dasharray: 31.25 0 31.25 37.5;
+  transition-timing-function: steps(1, start), var(--trans-timing);
+}
+
+.switch.connecting {
   animation: power-breathe 1200ms ease-in-out infinite;
 }
 
-.power.connecting::before {
-  border-top-color: rgba(82, 214, 126, 0.4);
-  border-right-color: rgba(255, 93, 93, 0.34);
+.switch.connecting .switch__base-neon path,
+.switch.connecting .switch__knob-neon circle {
   opacity: 1;
-  animation: power-orbit 820ms linear infinite;
+  stroke-dasharray: 18 8 18 8 18 8 18 4;
+  animation: switch-neon-flow 1s linear infinite;
 }
 
-.power.connecting .power-ring {
-  border-color: rgba(8, 17, 19, 0.3);
-  animation: power-ring-pulse 900ms ease-in-out infinite;
-}
-
-@keyframes power-orbit {
-  to { transform: rotate(360deg); }
+@keyframes switch-neon-flow {
+  to { stroke-dashoffset: -100; }
 }
 
 @keyframes power-breathe {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.025); }
+  50% { transform: scale(1.015); }
 }
 
-@keyframes power-ring-pulse {
-  0%, 100% { inset: 11px; opacity: 0.72; }
-  50% { inset: 6px; opacity: 1; }
+@keyframes power-ripple {
+  0%, 100% { transform: scale(0.96); opacity: 0.56; }
+  50% { transform: scale(1.04); opacity: 1; }
 }
 
 .notice {
