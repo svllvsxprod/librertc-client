@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "LibreRTC Client",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "identifier": "com.svllvsxprod.librertc.client",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -28,8 +28,18 @@
     }
   },
   "bundle": {
-    "active": false,
-    "targets": "all",
-    "icon": ["icons/icon.ico", "icons/icon.png"]
+    "active": true,
+    "targets": ["nsis"],
+    "icon": ["icons/icon.ico", "icons/icon.png"],
+    "resources": {
+      "target/release/olcrtc.exe": "olcrtc.exe",
+      "target/release/librertc-net-service.exe": "librertc-net-service.exe"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "perMachine",
+        "installerHooks": "./windows/hooks.nsh"
+      }
+    }
   }
 }

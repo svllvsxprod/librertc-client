@@ -521,6 +521,8 @@ welcomeContinue.addEventListener('click', async () => {
 });
 
 let updateUrl = 'https://github.com/svllvsxprod/librertc-client/releases';
+let updateCheckInFlight = false;
+let updateShown = false;
 
 updateOpen.addEventListener('click', async () => {
   updateOverlay.hidden = true;
@@ -630,20 +632,26 @@ async function boot() {
     renderStatus(await invoke<ClientStatus>('get_status'));
     welcomeOverlay.hidden = true;
     window.setTimeout(() => void checkForUpdate(), 1300);
+    window.setInterval(() => void checkForUpdate(), 30 * 60 * 1000);
   } catch (error) {
     renderNotice(String(error));
   }
 }
 
 async function checkForUpdate() {
+  if (updateCheckInFlight || updateShown) return;
+  updateCheckInFlight = true;
   try {
     const update = await invoke<UpdateInfo>('check_for_update');
     if (!update.available) return;
     updateUrl = update.releases_url || updateUrl;
     updateVersion.textContent = `v${update.latest_version}`;
     updateOverlay.hidden = false;
+    updateShown = true;
   } catch (error) {
     console.warn('update check failed', error);
+  } finally {
+    updateCheckInFlight = false;
   }
 }
 
@@ -797,6 +805,7 @@ function renderStatus(status: ClientStatus) {
   renderNotice(status.notice);
   if (previousState !== 'connected' && status.state === 'connected') {
     window.setTimeout(() => void showWelcomeAfterFirstConnect(), 800);
+    window.setTimeout(() => void checkForUpdate(), 1500);
   }
 }
 

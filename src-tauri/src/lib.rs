@@ -299,13 +299,27 @@ fn check_for_update_inner() -> Result<UpdateInfo, String> {
         .build()
         .map_err(|err| format!("update client: {err}"))?;
 
-    let release = client
+    let release = match client
         .get("https://api.github.com/repos/svllvsxprod/librertc-client/releases/latest")
+        .header("Cache-Control", "no-cache")
         .send()
         .and_then(|response| response.error_for_status())
-        .map_err(|err| format!("check update: {err}"))?
-        .json::<GitHubRelease>()
-        .map_err(|err| format!("parse update: {err}"))?;
+    {
+        Ok(response) => response
+            .json::<GitHubRelease>()
+            .map_err(|err| format!("parse update: {err}"))?,
+        Err(_) => client
+            .get("https://api.github.com/repos/svllvsxprod/librertc-client/releases?per_page=1")
+            .header("Cache-Control", "no-cache")
+            .send()
+            .and_then(|response| response.error_for_status())
+            .map_err(|err| format!("check update: {err}"))?
+            .json::<Vec<GitHubRelease>>()
+            .map_err(|err| format!("parse update list: {err}"))?
+            .into_iter()
+            .next()
+            .ok_or_else(|| "no releases published".to_string())?,
+    };
 
     let latest_version = release.tag_name.trim_start_matches('v').to_string();
     Ok(UpdateInfo {
@@ -513,7 +527,8 @@ fn connect_inner(state: &AppState) -> Result<ClientStatus, String> {
     let args = olcrtc_args(&runtime_profile, &target, &data_dir);
     let tun_requested = runtime_profile.mode == "tun";
 
-    let mut command = Command::new(&runtime_profile.olcrtc_path);
+    let olcrtc_path = resolve_runtime_file(&runtime_profile.olcrtc_path, "olcrtc.exe")?;
+    let mut command = Command::new(&olcrtc_path);
     hide_window(&mut command);
     let mut child = command
         .args(args)
@@ -1063,19 +1078,37 @@ fn install_net_service() -> Result<(), String> {
 }
 
 fn resolve_net_service_path() -> Result<PathBuf, String> {
+    resolve_runtime_file("librertc-net-service.exe", "librertc-net-service.exe")
+}
+
+fn resolve_runtime_file(configured: &str, file_name: &str) -> Result<PathBuf, String> {
+    let configured_path = PathBuf::from(configured);
+    if configured_path.is_absolute() && configured_path.is_file() {
+        return Ok(configured_path);
+    }
+
     let exe = std::env::current_exe().map_err(|err| format!("resolve app path: {err}"))?;
-    let dir = exe
+    let app_dir = exe
         .parent()
         .ok_or_else(|| "resolve app directory: executable has no parent".to_string())?;
-    let service = dir.join("librertc-net-service.exe");
-    if service.is_file() {
-        Ok(service)
-    } else {
-        Err(format!(
-            "TUN mode requires {} next to librertc-client.exe",
-            service.display()
-        ))
+    let candidates = [
+        app_dir.join(configured),
+        app_dir.join(file_name),
+        app_dir.join("resources").join(file_name),
+        std::env::current_dir()
+            .map_err(|err| format!("resolve current directory: {err}"))?
+            .join(configured),
+    ];
+
+    for candidate in candidates {
+        if candidate.is_file() {
+            return Ok(candidate);
+        }
     }
+
+    Err(format!(
+        "LibreRTC runtime file is missing: expected {file_name} next to the app or in resources"
+    ))
 }
 
 #[cfg(target_os = "windows")]
