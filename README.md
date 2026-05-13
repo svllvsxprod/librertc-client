@@ -29,10 +29,10 @@
       <h3>Поддержка и сообщество</h3>
       <p>Поддержать разработку, следить за обновлениями или присоединиться к обсуждению LibreRTC.</p>
       <a href="https://t.me/tribute/app?startapp=dK9j">
-        <img src="screens/donate-tribute.svg" width="360" alt="Support LibreRTC via Tribute" />
+        <img src="screens/donate-tribute.svg" width="340" alt="Support LibreRTC via Tribute" />
       </a>
       <a href="https://nowpayments.io/donation/svllvsx">
-        <img src="screens/donate-nowpayments.svg" width="360" alt="Donate with NOWPayments" />
+        <img src="screens/donate-nowpayments.svg" width="340" alt="Donate with NOWPayments" />
       </a>
       <br />
       <a href="https://t.me/svllvsxprod">
