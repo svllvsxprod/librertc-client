@@ -20,6 +20,7 @@ import (
 	boxservice "github.com/sagernet/sing-box/adapter/service"
 	"github.com/sagernet/sing-box/dns"
 	"github.com/sagernet/sing-box/dns/transport"
+	"github.com/sagernet/sing-box/dns/transport/local"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/protocol/direct"
 	"github.com/sagernet/sing-box/protocol/mixed"
@@ -373,6 +374,7 @@ func singBoxContext(ctx context.Context) context.Context {
 	socks.RegisterOutbound(outboundRegistry)
 
 	dnsRegistry := dns.NewTransportRegistry()
+	local.RegisterTransport(dnsRegistry)
 	transport.RegisterHTTPS(dnsRegistry)
 
 	return box.Context(

@@ -497,7 +497,41 @@ fn open_external(url: String) -> Result<(), String> {
 
 #[tauri::command]
 fn connect(state: State<AppState>) -> Result<ClientStatus, String> {
-    connect_inner(state.inner())
+    match connect_inner(state.inner()) {
+        Ok(status) => Ok(status),
+        Err(err) => {
+            mark_connect_failed(state.inner(), &err);
+            Err(err)
+        }
+    }
+}
+
+fn mark_connect_failed(state: &AppState, error: &str) {
+    let proxy_backup = {
+        let Ok(mut store) = state.store.lock() else {
+            clear_librertc_system_proxy();
+            return;
+        };
+        store.runtime_pid = None;
+        store.tun_active = false;
+        store.proxy_service_active = false;
+        store.status.state = "disconnected".into();
+        store.status.started_at.clear();
+        store.status.download_bps = 0;
+        store.status.upload_bps = 0;
+        store.status.notice = error.into();
+        store.append_log(format!("Connect failed: {error}"));
+        store.system_proxy_backup.take()
+    };
+
+    if let Some(backup) = proxy_backup {
+        if restore_system_proxy(&backup).is_err() {
+            clear_librertc_system_proxy();
+        }
+    } else {
+        clear_librertc_system_proxy();
+    }
+    let _ = stop_net_service_tun();
 }
 
 fn connect_inner(state: &AppState) -> Result<ClientStatus, String> {
