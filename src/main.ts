@@ -727,6 +727,7 @@ function closeLanguageDropdown() {
 }
 
 function renderStatus(status: ClientStatus) {
+  const previousState = currentStatus?.state;
   currentStatus = status;
   const running = status.state === 'connected' || status.state === 'connecting';
   statePill.textContent = label(status.state);
@@ -742,7 +743,9 @@ function renderStatus(status: ClientStatus) {
   startedValue.textContent = formatStarted(status.started_at);
   logsBox.textContent = status.logs.length > 0 ? status.logs.slice().reverse().join('\n') : t('noLogs');
   renderNotice(status.notice);
-  if (status.state === 'connected') void showWelcomeAfterFirstConnect();
+  if (previousState !== 'connected' && status.state === 'connected') {
+    window.setTimeout(() => void showWelcomeAfterFirstConnect(), 800);
+  }
 }
 
 async function showWelcomeAfterFirstConnect() {

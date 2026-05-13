@@ -9,7 +9,7 @@ use std::{
     collections::BTreeMap,
     fs,
     io::{BufRead, BufReader, Read},
-    net::{TcpListener, TcpStream},
+    net::{SocketAddr, TcpListener, TcpStream},
     path::PathBuf,
     process::{Command, Stdio},
     sync::{Arc, Mutex},
@@ -246,24 +246,12 @@ fn dismiss_welcome(state: State<AppState>) -> Result<ClientProfile, String> {
 
 #[tauri::command]
 fn check_public_internet() -> bool {
-    let client = match reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(5))
-        .build()
-    {
-        Ok(client) => client,
-        Err(_) => return false,
-    };
-
-    for url in [
-        "https://www.google.com/generate_204",
-        "https://api.ipify.org",
+    let timeout = Duration::from_millis(1200);
+    for addr in [
+        SocketAddr::from(([1, 1, 1, 1], 443)),
+        SocketAddr::from(([8, 8, 8, 8], 443)),
     ] {
-        if client
-            .get(url)
-            .send()
-            .and_then(|response| response.error_for_status())
-            .is_ok()
-        {
+        if TcpStream::connect_timeout(&addr, timeout).is_ok() {
             return true;
         }
     }
