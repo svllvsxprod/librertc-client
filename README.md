@@ -26,26 +26,18 @@
 <table align="center">
   <tr>
     <td align="center" width="760">
-      <h3>Поддержать независимую разработку LibreRTC</h3>
-      <p>Если проект полезен, можно поддержать разработку, тестирование Windows-клиента и сетевой инфраструктуры.</p>
+      <h3>Поддержка и сообщество</h3>
+      <p>Поддержать разработку, следить за обновлениями или присоединиться к обсуждению LibreRTC.</p>
       <a href="https://t.me/tribute/app?startapp=dK9j">
         <img src="screens/donate-tribute.svg" width="360" alt="Support LibreRTC via Tribute" />
       </a>
       <a href="https://nowpayments.io/donation/svllvsx">
         <img src="screens/donate-nowpayments.svg" width="360" alt="Donate with NOWPayments" />
       </a>
-    </td>
-  </tr>
-</table>
-
-<table align="center">
-  <tr>
-    <td align="center" width="370">
+      <br />
       <a href="https://t.me/svllvsxprod">
         <img src="screens/telegram-updates.svg" width="340" alt="svllvsxprod Telegram" />
       </a>
-    </td>
-    <td align="center" width="370">
       <a href="https://t.me/openlibrecommunity">
         <img src="screens/telegram-community.svg" width="340" alt="Open Libre Community Telegram" />
       </a>
