@@ -22,6 +22,7 @@ import (
 	"github.com/sagernet/sing-box/dns/transport"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/protocol/direct"
+	"github.com/sagernet/sing-box/protocol/mixed"
 	"github.com/sagernet/sing-box/protocol/socks"
 	"github.com/sagernet/sing-box/protocol/tun"
 	singjson "github.com/sagernet/sing/common/json"
@@ -101,13 +102,17 @@ type EngineStatus struct {
 	Running   bool   `json:"running"`
 	Mode      string `json:"mode"`
 	Socks     string `json:"socks"`
+	Proxy     string `json:"proxy"`
 	UpdatedAt string `json:"updated_at"`
 	Message   string `json:"message"`
 }
 
 type StartRequest struct {
+	Mode       string `json:"mode"`
 	SocksHost string `json:"socks_host"`
 	SocksPort int    `json:"socks_port"`
+	ListenHost string `json:"listen_host"`
+	ListenPort int    `json:"listen_port"`
 	DNS       string `json:"dns"`
 }
 
@@ -148,10 +153,19 @@ func (engine *singBoxEngine) Start(ctx context.Context, request StartRequest) er
 	}
 	engine.instance = instance
 	engine.cancel = cancel
+	mode := request.Mode
+	if mode == "" {
+		mode = "tun"
+	}
+	proxy := ""
+	if mode == "proxy" {
+		proxy = fmt.Sprintf("%s:%d", request.ListenHost, request.ListenPort)
+	}
 	engine.status = EngineStatus{
 		Running:   true,
-		Mode:      "tun",
+		Mode:      mode,
 		Socks:     fmt.Sprintf("%s:%d", request.SocksHost, request.SocksPort),
+		Proxy:     proxy,
 		UpdatedAt: time.Now().Format(time.RFC3339),
 		Message:   "sing-box embedded engine running",
 	}
@@ -190,6 +204,13 @@ func (engine *singBoxEngine) stopLocked() error {
 }
 
 func buildSingBoxOptions(request StartRequest) (option.Options, error) {
+	if request.Mode == "proxy" {
+		return buildProxyOptions(request)
+	}
+	return buildTunOptions(request)
+}
+
+func buildTunOptions(request StartRequest) (option.Options, error) {
 	if request.SocksHost == "" {
 		request.SocksHost = "127.0.0.1"
 	}
@@ -282,8 +303,69 @@ func buildSingBoxOptions(request StartRequest) (option.Options, error) {
 	return options, nil
 }
 
+func buildProxyOptions(request StartRequest) (option.Options, error) {
+	if request.SocksHost == "" {
+		request.SocksHost = "127.0.0.1"
+	}
+	if request.ListenHost == "" {
+		request.ListenHost = "127.0.0.1"
+	}
+	if request.SocksPort <= 0 || request.SocksPort > 65535 {
+		return option.Options{}, fmt.Errorf("invalid SOCKS port: %d", request.SocksPort)
+	}
+	if request.ListenPort <= 0 || request.ListenPort > 65535 {
+		return option.Options{}, fmt.Errorf("invalid proxy listen port: %d", request.ListenPort)
+	}
+	raw := fmt.Sprintf(`{
+  "log": {
+    "level": "warn",
+    "timestamp": true
+  },
+  "inbounds": [
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": %q,
+      "listen_port": %d
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "socks",
+      "tag": "socks-out",
+      "server": %q,
+      "server_port": %d,
+      "version": "5"
+    },
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ],
+  "route": {
+    "final": "socks-out",
+    "rules": [
+      {
+        "ip_version": 6,
+        "action": "reject"
+      },
+      {
+        "network": "udp",
+        "action": "reject"
+      }
+    ]
+  }
+}`, request.ListenHost, request.ListenPort, request.SocksHost, request.SocksPort)
+	options, err := singjson.UnmarshalExtendedContext[option.Options](singBoxContext(context.Background()), []byte(raw))
+	if err != nil {
+		return option.Options{}, fmt.Errorf("decode sing-box proxy config: %w", err)
+	}
+	return options, nil
+}
+
 func singBoxContext(ctx context.Context) context.Context {
 	inboundRegistry := inbound.NewRegistry()
+	mixed.RegisterInbound(inboundRegistry)
 	tun.RegisterInbound(inboundRegistry)
 
 	outboundRegistry := outbound.NewRegistry()
