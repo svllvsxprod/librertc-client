@@ -64,12 +64,14 @@ struct ClientStore {
 
 impl ClientStore {
     fn new() -> Self {
-        let config = load_config().unwrap_or_default();
+        let mut config = load_config().unwrap_or_default();
+        apply_app_version_migration(&mut config);
         let profile = config.profile;
+        let servers = config.servers;
         Self {
             status: ClientStatus::ready(&profile),
             profile,
-            servers: config.servers,
+            servers,
             runtime_pid: None,
             tun_active: false,
             system_proxy_backup: None,
@@ -117,6 +119,8 @@ struct ClientProfile {
     olcrtc_path: String,
     #[serde(default)]
     welcome_dismissed: bool,
+    #[serde(default)]
+    last_seen_version: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -148,6 +152,7 @@ impl Default for ClientProfile {
             dns: "1.1.1.1:53".into(),
             olcrtc_path: "olcrtc.exe".into(),
             welcome_dismissed: false,
+            last_seen_version: env!("CARGO_PKG_VERSION").into(),
         }
     }
 }
@@ -907,6 +912,16 @@ fn load_config() -> Option<ClientConfig> {
         profile: normalize_profile(profile),
         servers: Vec::new(),
     })
+}
+
+fn apply_app_version_migration(config: &mut ClientConfig) {
+    const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
+    if config.profile.last_seen_version == CURRENT_VERSION {
+        return;
+    }
+    config.profile.welcome_dismissed = false;
+    config.profile.last_seen_version = CURRENT_VERSION.into();
+    let _ = save_config_file(config);
 }
 
 fn save_config_file(config: &ClientConfig) -> Result<(), String> {
