@@ -1316,7 +1316,9 @@ fn handle_http_proxy_client(
     socks_port: u16,
 ) -> Result<(), String> {
     let request = read_http_proxy_header(&mut client)?;
-    let header = String::from_utf8_lossy(&request);
+    let header_end = http_header_end(&request)
+        .ok_or_else(|| "HTTP proxy request header is incomplete".to_string())?;
+    let header = String::from_utf8_lossy(&request[..header_end]);
     let mut lines = header.split("\r\n");
     let first_line = lines
         .next()
@@ -1327,10 +1329,15 @@ fn handle_http_proxy_client(
 
     if method.eq_ignore_ascii_case("CONNECT") {
         let (host, port) = parse_host_port(target, 443)?;
-        let upstream = socks_connect(socks_host, socks_port, &host, port)?;
+        let mut upstream = socks_connect(socks_host, socks_port, &host, port)?;
         client
             .write_all(b"HTTP/1.1 200 Connection Established\r\n\r\n")
             .map_err(|err| format!("HTTP proxy CONNECT response: {err}"))?;
+        if request.len() > header_end + 4 {
+            upstream
+                .write_all(&request[header_end + 4..])
+                .map_err(|err| format!("HTTP proxy forward buffered CONNECT data: {err}"))?;
+        }
         pipe_streams(client, upstream);
         return Ok(());
     }
@@ -1358,11 +1365,15 @@ fn read_http_proxy_header(stream: &mut TcpStream) -> Result<Vec<u8>, String> {
             break;
         }
         data.extend_from_slice(&buffer[..read]);
-        if data.windows(4).any(|chunk| chunk == b"\r\n\r\n") {
+        if http_header_end(&data).is_some() {
             return Ok(data);
         }
     }
     Err("HTTP proxy request header is incomplete".into())
+}
+
+fn http_header_end(data: &[u8]) -> Option<usize> {
+    data.windows(4).position(|chunk| chunk == b"\r\n\r\n")
 }
 
 fn parse_host_port(value: &str, default_port: u16) -> Result<(String, u16), String> {
