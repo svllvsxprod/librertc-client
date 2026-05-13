@@ -8,6 +8,8 @@ import proxyIcon from './assets/proxy.svg?raw';
 import telegramIcon from './assets/telegram.svg?raw';
 import tributeIcon from './assets/tribute.svg?raw';
 import uploadIcon from './assets/upload.svg?raw';
+import '@fontsource/inter/cyrillic-400.css';
+import '@fontsource/inter/latin-400.css';
 import './styles.css';
 
 type ClientProfile = {
