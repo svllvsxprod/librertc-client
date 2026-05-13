@@ -157,6 +157,19 @@ struct ClientStatus {
     logs: Vec<String>,
 }
 
+#[derive(Clone, Debug, Serialize)]
+struct UpdateInfo {
+    available: bool,
+    current_version: String,
+    latest_version: String,
+    releases_url: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitHubRelease {
+    tag_name: String,
+}
+
 impl ClientStatus {
     fn ready(profile: &ClientProfile) -> Self {
         Self {
@@ -256,6 +269,40 @@ fn check_public_internet() -> bool {
         }
     }
     false
+}
+
+#[tauri::command]
+async fn check_for_update() -> Result<UpdateInfo, String> {
+    tauri::async_runtime::spawn_blocking(check_for_update_inner)
+        .await
+        .map_err(|err| format!("check update task: {err}"))?
+}
+
+fn check_for_update_inner() -> Result<UpdateInfo, String> {
+    const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
+    const RELEASES_URL: &str = "https://github.com/svllvsxprod/librertc-client/releases";
+
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(4))
+        .user_agent("LibreRTC-Client-Updater")
+        .build()
+        .map_err(|err| format!("update client: {err}"))?;
+
+    let release = client
+        .get("https://api.github.com/repos/svllvsxprod/librertc-client/releases/latest")
+        .send()
+        .and_then(|response| response.error_for_status())
+        .map_err(|err| format!("check update: {err}"))?
+        .json::<GitHubRelease>()
+        .map_err(|err| format!("parse update: {err}"))?;
+
+    let latest_version = release.tag_name.trim_start_matches('v').to_string();
+    Ok(UpdateInfo {
+        available: version_newer(&latest_version, CURRENT_VERSION),
+        current_version: CURRENT_VERSION.into(),
+        latest_version,
+        releases_url: RELEASES_URL.into(),
+    })
 }
 
 #[tauri::command]
@@ -397,6 +444,7 @@ fn open_external(url: String) -> Result<(), String> {
         "https://t.me/openlibrecommunity",
         "https://t.me/tribute/app?startapp=dK9j",
         "https://nowpayments.io/donation/svllvsx",
+        "https://github.com/svllvsxprod/librertc-client/releases",
     ];
     if !ALLOWED.contains(&url.as_str()) {
         return Err("external URL is not allowed".into());
@@ -485,14 +533,32 @@ fn connect_inner(state: &AppState) -> Result<ClientStatus, String> {
         false
     };
 
+    let proxy_backup = if tun_requested {
+        None
+    } else {
+        match enable_system_proxy(&runtime_profile) {
+            Ok(backup) => Some(backup),
+            Err(err) => {
+                kill_process(pid);
+                return Err(err);
+            }
+        }
+    };
+
     {
         let mut store = state.store.lock().map_err(lock_error)?;
         store.profile = profile.clone();
         if tun_requested {
             store.append_log("System proxy left unchanged; TUN routes system traffic directly");
+        } else {
+            store.append_log(format!(
+                "System proxy enabled: socks={}",
+                socks_address(&runtime_profile)
+            ));
         }
         store.runtime_pid = Some(pid);
         store.tun_active = tun_active;
+        store.system_proxy_backup = proxy_backup;
         store.status.state = "connected".into();
         store.status.mode = runtime_profile.mode.clone();
         store.status.socks = socks_address(&runtime_profile);
@@ -1138,6 +1204,71 @@ fn restore_system_proxy(backup: &SystemProxyBackup) -> Result<(), String> {
     Ok(())
 }
 
+fn enable_system_proxy(profile: &ClientProfile) -> Result<SystemProxyBackup, String> {
+    let backup = system_proxy_backup()?;
+    #[cfg(target_os = "windows")]
+    {
+        reg_set("ProxyEnable", "REG_DWORD", "1")?;
+        reg_set(
+            "ProxyServer",
+            "REG_SZ",
+            &format!("socks={}", socks_address(profile)),
+        )?;
+        reg_set("ProxyOverride", "REG_SZ", "<local>")?;
+        notify_proxy_change();
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = profile;
+    }
+    Ok(backup)
+}
+
+fn system_proxy_backup() -> Result<SystemProxyBackup, String> {
+    #[cfg(target_os = "windows")]
+    {
+        Ok(SystemProxyBackup {
+            proxy_enable: reg_query("ProxyEnable")?,
+            proxy_server: reg_query("ProxyServer")?,
+            proxy_override: reg_query("ProxyOverride")?,
+        })
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok(SystemProxyBackup {
+            proxy_enable: None,
+            proxy_server: None,
+            proxy_override: None,
+        })
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn reg_query(name: &str) -> Result<Option<String>, String> {
+    let mut command = Command::new("reg");
+    hide_window(&mut command);
+    let output = command
+        .args([
+            "query",
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings",
+            "/v",
+            name,
+        ])
+        .output()
+        .map_err(|err| format!("query {name}: {err}"))?;
+    if !output.status.success() {
+        return Ok(None);
+    }
+    let text = String::from_utf8_lossy(&output.stdout);
+    for line in text.lines() {
+        let parts = line.split_whitespace().collect::<Vec<_>>();
+        if parts.len() >= 3 && parts[0].eq_ignore_ascii_case(name) {
+            return Ok(Some(parts[2..].join(" ")));
+        }
+    }
+    Ok(None)
+}
+
 #[cfg(target_os = "windows")]
 fn reg_set(name: &str, kind: &str, value: &str) -> Result<(), String> {
     let mut command = Command::new("reg");
@@ -1233,9 +1364,29 @@ fn planned_steps(mode: &str) -> Vec<String> {
         vec![
             "Start olcrtc SOCKS runtime".into(),
             "Expose local proxy".into(),
-            "Use app/browser proxy settings".into(),
+            "Use Windows system proxy".into(),
         ]
     }
+}
+
+fn version_newer(latest: &str, current: &str) -> bool {
+    let parse = |value: &str| {
+        value
+            .split(['.', '-'])
+            .take(3)
+            .map(|part| part.parse::<u64>().unwrap_or(0))
+            .collect::<Vec<_>>()
+    };
+    let latest = parse(latest);
+    let current = parse(current);
+    for index in 0..3 {
+        let left = *latest.get(index).unwrap_or(&0);
+        let right = *current.get(index).unwrap_or(&0);
+        if left != right {
+            return left > right;
+        }
+    }
+    false
 }
 
 fn default_language() -> String {
@@ -1287,6 +1438,7 @@ pub fn run() {
             save_profile,
             dismiss_welcome,
             check_public_internet,
+            check_for_update,
             get_servers,
             import_servers,
             select_server,

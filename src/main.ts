@@ -57,6 +57,13 @@ type ClientStatus = {
 
 type Language = 'en' | 'ru';
 
+type UpdateInfo = {
+  available: boolean;
+  current_version: string;
+  latest_version: string;
+  releases_url: string;
+};
+
 const messages = {
   en: {
     connection: 'Connection',
@@ -114,6 +121,10 @@ const messages = {
     welcomeCommunity: 'Community',
     welcomeTribute: 'Tribute',
     welcomeDonate: 'Donate',
+    updateTitle: 'Update available',
+    updateText: 'A new LibreRTC Client release is available.',
+    updateOpen: 'Open releases',
+    updateLater: 'Later',
   },
   ru: {
     connection: 'Подключение',
@@ -171,6 +182,10 @@ const messages = {
     welcomeCommunity: 'Коммьюнити',
     welcomeTribute: 'Tribute',
     welcomeDonate: 'Поддержать',
+    updateTitle: 'Доступно обновление',
+    updateText: 'Доступна новая версия LibreRTC Client.',
+    updateOpen: 'Открыть releases',
+    updateLater: 'Позже',
   },
 } satisfies Record<Language, Record<string, string>>;
 
@@ -409,6 +424,15 @@ app.innerHTML = `
       <button class="welcome-continue" id="welcomeContinue" type="button" data-i18n="welcomeContinue">Подключиться</button>
     </section>
   </div>
+  <div class="update-overlay" id="updateOverlay" hidden>
+    <section class="update-card glass-card">
+      <button class="update-close" id="updateLater" type="button" data-i18n="updateLater">Позже</button>
+      <p class="eyebrow">LibreRTC</p>
+      <h2 data-i18n="updateTitle">Доступно обновление</h2>
+      <p><span data-i18n="updateText">Доступна новая версия LibreRTC Client.</span> <strong id="updateVersion"></strong></p>
+      <button class="welcome-continue" id="updateOpen" type="button" data-i18n="updateOpen">Открыть releases</button>
+    </section>
+  </div>
 `;
 
 const form = element<HTMLFormElement>('profileForm');
@@ -445,6 +469,10 @@ const logsBox = element<HTMLPreElement>('logsBox');
 const pageTitle = element<HTMLElement>('pageTitle');
 const welcomeOverlay = element<HTMLDivElement>('welcomeOverlay');
 const welcomeContinue = element<HTMLButtonElement>('welcomeContinue');
+const updateOverlay = element<HTMLDivElement>('updateOverlay');
+const updateVersion = element<HTMLElement>('updateVersion');
+const updateOpen = element<HTMLButtonElement>('updateOpen');
+const updateLater = element<HTMLButtonElement>('updateLater');
 
 let currentProfile: ClientProfile | null = null;
 let currentServers: ServerProfile[] = [];
@@ -490,6 +518,17 @@ welcomeContinue.addEventListener('click', async () => {
   } catch (error) {
     renderNotice(String(error));
   }
+});
+
+let updateUrl = 'https://github.com/svllvsxprod/librertc-client/releases';
+
+updateOpen.addEventListener('click', async () => {
+  updateOverlay.hidden = true;
+  await invoke('open_external', { url: updateUrl });
+});
+
+updateLater.addEventListener('click', () => {
+  updateOverlay.hidden = true;
 });
 
 for (const button of document.querySelectorAll<HTMLButtonElement>('.mode')) {
@@ -590,8 +629,21 @@ async function boot() {
     renderProfile(currentProfile);
     renderStatus(await invoke<ClientStatus>('get_status'));
     welcomeOverlay.hidden = true;
+    window.setTimeout(() => void checkForUpdate(), 1300);
   } catch (error) {
     renderNotice(String(error));
+  }
+}
+
+async function checkForUpdate() {
+  try {
+    const update = await invoke<UpdateInfo>('check_for_update');
+    if (!update.available) return;
+    updateUrl = update.releases_url || updateUrl;
+    updateVersion.textContent = `v${update.latest_version}`;
+    updateOverlay.hidden = false;
+  } catch (error) {
+    console.warn('update check failed', error);
   }
 }
 

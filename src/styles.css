@@ -82,11 +82,69 @@ body {
   display: none;
 }
 
+.update-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(6, 7, 10, 0.54);
+  backdrop-filter: blur(16px);
+}
+
+.update-overlay[hidden] {
+  display: none;
+}
+
 .welcome-card {
   width: min(560px, 100%);
   padding: 28px;
   text-align: center;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+}
+
+.update-card {
+  position: relative;
+  width: 360px;
+  padding: 24px;
+  text-align: left;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.44);
+}
+
+.update-card h2 {
+  margin: 4px 0 10px;
+  font-size: 24px;
+  letter-spacing: -0.04em;
+}
+
+.update-card p:not(.eyebrow) {
+  margin: 0 0 18px;
+  color: rgba(227, 225, 233, 0.72);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.update-card strong {
+  color: var(--primary);
+}
+
+.update-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(227, 225, 233, 0.68);
+  font-size: 11px;
+  font-weight: 650;
+  padding: 7px 10px;
+}
+
+.update-close:hover {
+  color: var(--text);
+  border-color: rgba(255, 215, 0, 0.32);
 }
 
 .welcome-mark {
