@@ -28,19 +28,16 @@
     <td align="center" width="760">
       <h3>Поддержка и сообщество</h3>
       <p>Поддержать разработку, следить за обновлениями или присоединиться к обсуждению LibreRTC.</p>
-      <a href="https://t.me/tribute/app?startapp=dK9j">
-        <img src="screens/donate-tribute-v2.svg" width="340" alt="Support LibreRTC via Tribute" />
-      </a>
-      <a href="https://nowpayments.io/donation/svllvsx">
-        <img src="screens/donate-nowpayments-v2.svg" width="340" alt="Donate with NOWPayments" />
-      </a>
-      <br />
-      <a href="https://t.me/svllvsxprod">
-        <img src="screens/telegram-updates-v2.svg" width="340" alt="svllvsxprod Telegram" />
-      </a>
-      <a href="https://t.me/openlibrecommunity">
-        <img src="screens/telegram-community-v2.svg" width="340" alt="Open Libre Community Telegram" />
-      </a>
+      <table align="center">
+        <tr>
+          <td align="center" width="350"><a href="https://t.me/tribute/app?startapp=dK9j"><img src="screens/donate-tribute-v2.svg" width="340" alt="Support LibreRTC via Tribute" /></a></td>
+          <td align="center" width="350"><a href="https://nowpayments.io/donation/svllvsx"><img src="screens/donate-nowpayments-v2.svg" width="340" alt="Donate with NOWPayments" /></a></td>
+        </tr>
+        <tr>
+          <td align="center" width="350"><a href="https://t.me/svllvsxprod"><img src="screens/telegram-updates-v2.svg" width="340" alt="svllvsxprod Telegram" /></a></td>
+          <td align="center" width="350"><a href="https://t.me/openlibrecommunity"><img src="screens/telegram-community-v2.svg" width="340" alt="Open Libre Community Telegram" /></a></td>
+        </tr>
+      </table>
     </td>
   </tr>
 </table>
