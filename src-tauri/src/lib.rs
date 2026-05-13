@@ -1495,11 +1495,11 @@ fn pipe_streams(mut left: TcpStream, mut right: TcpStream) {
     };
     let left_to_right = thread::spawn(move || {
         let _ = std::io::copy(&mut left_reader, &mut right);
-        let _ = right.shutdown(std::net::Shutdown::Both);
+        let _ = right.shutdown(std::net::Shutdown::Write);
     });
     let right_to_left = thread::spawn(move || {
         let _ = std::io::copy(&mut right_reader, &mut left);
-        let _ = left.shutdown(std::net::Shutdown::Both);
+        let _ = left.shutdown(std::net::Shutdown::Write);
     });
     let _ = left_to_right.join();
     let _ = right_to_left.join();
