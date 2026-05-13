@@ -23,6 +23,7 @@ type ClientProfile = {
   socks_port: number;
   dns: string;
   olcrtc_path: string;
+  welcome_dismissed: boolean;
 };
 
 type ServerProfile = {
@@ -106,6 +107,13 @@ const messages = {
     stepProxySettings: 'Use app/browser proxy settings',
     stepTun: 'Start sing-box TUN bridge',
     stepKill: 'Route system traffic through TUN',
+    welcomeTitle: 'Thank you for downloading LibreRTC',
+    welcomeText: 'We would be glad if you subscribed to our Telegram groups to follow updates and support the community. Thank you!',
+    welcomeContinue: 'Connect',
+    welcomeUpdates: 'Project updates',
+    welcomeCommunity: 'Community',
+    welcomeTribute: 'Tribute',
+    welcomeDonate: 'Donate',
   },
   ru: {
     connection: 'Подключение',
@@ -156,6 +164,13 @@ const messages = {
     stepProxySettings: 'Используйте proxy в приложении/браузере',
     stepTun: 'Запуск sing-box TUN bridge',
     stepKill: 'Маршрутизация трафика ПК через TUN',
+    welcomeTitle: 'Спасибо за скачивание LibreRTC',
+    welcomeText: 'Большое спасибо за то что скачали данный клиент, будем рады если вы подпишитесь на группы в Telegram чтобы следить за обновлениями и поддержать наше коммьюнити, спасибо!',
+    welcomeContinue: 'Подключиться',
+    welcomeUpdates: 'Обновления проекта',
+    welcomeCommunity: 'Коммьюнити',
+    welcomeTribute: 'Tribute',
+    welcomeDonate: 'Поддержать',
   },
 } satisfies Record<Language, Record<string, string>>;
 
@@ -379,6 +394,21 @@ app.innerHTML = `
       </section>
     </section>
   </main>
+  <div class="welcome-overlay" id="welcomeOverlay" hidden>
+    <section class="welcome-card glass-card">
+      <div class="welcome-mark"><span>LR</span></div>
+      <p class="eyebrow">LibreRTC</p>
+      <h2 data-i18n="welcomeTitle">Спасибо за скачивание LibreRTC</h2>
+      <p class="welcome-copy" data-i18n="welcomeText">Большое спасибо за то что скачали данный клиент, будем рады если вы подпишитесь на группы в Telegram чтобы следить за обновлениями и поддержать наше коммьюнити, спасибо!</p>
+      <div class="welcome-links">
+        <a class="welcome-link" href="https://t.me/svllvsxprod" target="_blank" rel="noreferrer"><span>${telegramIcon}</span><strong data-i18n="welcomeUpdates">Обновления проекта</strong></a>
+        <a class="welcome-link" href="https://t.me/openlibrecommunity" target="_blank" rel="noreferrer"><span>${communityIcon}</span><strong data-i18n="welcomeCommunity">Коммьюнити</strong></a>
+        <a class="welcome-link" href="https://t.me/tribute/app?startapp=dK9j" target="_blank" rel="noreferrer"><span>${tributeIcon}</span><strong data-i18n="welcomeTribute">Tribute</strong></a>
+        <a class="welcome-link" href="https://nowpayments.io/donation/svllvsx" target="_blank" rel="noreferrer"><span>${donationIcon}</span><strong data-i18n="welcomeDonate">Поддержать</strong></a>
+      </div>
+      <button class="welcome-continue" id="welcomeContinue" type="button" data-i18n="welcomeContinue">Подключиться</button>
+    </section>
+  </div>
 `;
 
 const form = element<HTMLFormElement>('profileForm');
@@ -413,6 +443,8 @@ const uploadValue = element<HTMLElement>('uploadValue');
 const startedValue = element<HTMLElement>('startedValue');
 const logsBox = element<HTMLPreElement>('logsBox');
 const pageTitle = element<HTMLElement>('pageTitle');
+const welcomeOverlay = element<HTMLDivElement>('welcomeOverlay');
+const welcomeContinue = element<HTMLButtonElement>('welcomeContinue');
 
 let currentProfile: ClientProfile | null = null;
 let currentServers: ServerProfile[] = [];
@@ -442,6 +474,22 @@ for (const link of document.querySelectorAll<HTMLAnchorElement>('.rail-link')) {
     await invoke('open_external', { url: link.href });
   });
 }
+
+for (const link of document.querySelectorAll<HTMLAnchorElement>('.welcome-link')) {
+  link.addEventListener('click', async (event) => {
+    event.preventDefault();
+    await invoke('open_external', { url: link.href });
+  });
+}
+
+welcomeContinue.addEventListener('click', async () => {
+  try {
+    currentProfile = await invoke<ClientProfile>('dismiss_welcome');
+    welcomeOverlay.hidden = true;
+  } catch (error) {
+    renderNotice(String(error));
+  }
+});
 
 for (const button of document.querySelectorAll<HTMLButtonElement>('.mode')) {
   button.addEventListener('click', () => setMode(button.dataset.mode === 'tun' ? 'tun' : 'proxy'));
@@ -540,6 +588,7 @@ async function boot() {
     renderServers();
     renderProfile(currentProfile);
     renderStatus(await invoke<ClientStatus>('get_status'));
+    welcomeOverlay.hidden = currentProfile.welcome_dismissed;
   } catch (error) {
     renderNotice(String(error));
   }

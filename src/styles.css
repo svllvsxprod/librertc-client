@@ -64,6 +64,122 @@ body {
     var(--surface);
 }
 
+.welcome-overlay {
+  position: fixed;
+  inset: 38px 0 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255, 215, 0, 0.12), transparent 42%),
+    radial-gradient(circle at 80% 80%, rgba(0, 227, 253, 0.1), transparent 38%),
+    rgba(13, 14, 19, 0.72);
+  backdrop-filter: blur(22px) saturate(115%);
+}
+
+.welcome-overlay[hidden] {
+  display: none;
+}
+
+.welcome-card {
+  width: min(560px, 100%);
+  padding: 28px;
+  text-align: center;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+}
+
+.welcome-mark {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 12px;
+  border: 1px solid rgba(255, 215, 0, 0.24);
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(255, 215, 0, 0.18), rgba(0, 227, 253, 0.1));
+  color: var(--primary);
+  font-weight: 900;
+  letter-spacing: -0.08em;
+}
+
+.welcome-card h2 {
+  margin: 4px 0 10px;
+  font-size: 26px;
+  letter-spacing: -0.04em;
+}
+
+.welcome-copy {
+  max-width: 470px;
+  margin: 0 auto 18px;
+  color: rgba(227, 225, 233, 0.72);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.welcome-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.welcome-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--text);
+  text-decoration: none;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.welcome-link:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 215, 0, 0.32);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.welcome-link span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--primary);
+}
+
+.welcome-link svg {
+  width: 22px;
+  height: 22px;
+}
+
+.welcome-link strong {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 650;
+  text-align: left;
+}
+
+.welcome-continue {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid rgba(255, 215, 0, 0.44);
+  border-radius: 15px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.9), rgba(255, 184, 0, 0.82));
+  color: rgba(30, 25, 4, 0.96);
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 14px 30px rgba(255, 215, 0, 0.12);
+}
+
+.welcome-continue:hover {
+  transform: translateY(-1px);
+}
+
 .window-titlebar {
   display: flex;
   align-items: center;

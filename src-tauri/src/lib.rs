@@ -104,6 +104,8 @@ struct ClientProfile {
     socks_port: u16,
     dns: String,
     olcrtc_path: String,
+    #[serde(default)]
+    welcome_dismissed: bool,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -134,6 +136,7 @@ impl Default for ClientProfile {
             socks_port: 0,
             dns: "1.1.1.1:53".into(),
             olcrtc_path: "olcrtc.exe".into(),
+            welcome_dismissed: false,
         }
     }
 }
@@ -227,6 +230,18 @@ fn save_profile(profile: ClientProfile, state: State<AppState>) -> Result<Client
     store.status.notice.clear();
     store.append_log(format!("Profile saved: {}", profile.name));
     Ok(profile)
+}
+
+#[tauri::command]
+fn dismiss_welcome(state: State<AppState>) -> Result<ClientProfile, String> {
+    let mut store = state.store.lock().map_err(lock_error)?;
+    store.profile.welcome_dismissed = true;
+    save_config_file(&ClientConfig {
+        profile: store.profile.clone(),
+        servers: store.servers.clone(),
+    })?;
+    store.append_log("Welcome screen dismissed");
+    Ok(store.profile.clone())
 }
 
 #[tauri::command]
@@ -1256,6 +1271,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_profile,
             save_profile,
+            dismiss_welcome,
             get_servers,
             import_servers,
             select_server,
